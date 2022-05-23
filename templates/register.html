@@ -1,0 +1,17 @@
+{% from "includes/formhelpers.html" import render_field %}
+
+{% extends 'layout.html' %} <!--layouttaki herşeyi alıcak-->
+
+{% block body %} <!--burada olmasını istediğimiz kısımları yazıcaz.-->
+<h3>Kayıt olun</h3>
+<hr>
+<form method="post"> <!--form oluşturdik ve actionu sildik. -->
+    {{ render_field(form.name,class="form-control") }}
+    {{ render_field(form.username,class="form-control") }}
+    {{ render_field(form.email,class="form-control") }}
+    {{ render_field(form.password,class="form-control") }}
+    {{ render_field(form.confirm,class="form-control") }}
+    <button type="submit" class="btn btn-primary">Kayıt ol</button>
+
+</form>
+{% endblock body %}
