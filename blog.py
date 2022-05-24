@@ -19,7 +19,7 @@ class RegisterForm(Form):
     ])
     confirm = PasswordField("Parola Doğrula")
 
-class LoginForm(Form):
+class LoginForm(Form): #giriş formu oluşturuyoruz.
     username = StringField("Kullanıcı Adı")
     password = PasswordField("Parola")
 
@@ -64,10 +64,53 @@ def register():
         cursor.close() #değişiklik yaptıkran sonra mysql bağlantısını kapatıyoruz.Arakdaki kaynakların gereksiz kullanılmaması için gayet önemli oluyor.
         #formadan aldığımız veriler mysqle eklendi. 
         flash("Başarıyla kayıt oldunuz","success") # sayfada post request oldğunda flash yapıyoruz ve index sayfasına get yapıyoruz.
-        return redirect(url_for("index")) #index fonksiyonuyla ilişkili olan url'ye gidiyor.Yani bizi index sayfasına atıcak. 
+        return redirect(url_for("login")) #index fonksiyonuyla ilişkili olan url'ye gidiyor.Yani bizi index sayfasına atıcak. 
     else:
         return render_template("register.html", form = form) #yukarda oluşturduğumuz formu direkt register.html e gönderiyoruz.
-     
+#login işlemi 
+@app.route("/login",methods=["GET","POST"])
+def login():
+    form = LoginForm(request.form) 
+    if request.method == "POST": # burada methodumuz postsa bilgileri veritabanında sorgulayacağız.
+        username = form.username.data
+        password_entered = form.password.data 
+        #burada formdaki bilgileri aldık ve veritabanında bunları sorgulayacağız.
+        #bunun için önce veritabanında işlem yapmamızı sağlayan cursoru oluşturucaz. 
+        cursor = mysql.connection.cursor() 
+
+        sorgu = "Select * From users where username = %s" 
+        result = cursor.execute(sorgu,(username,)) #değeri demet olarak dönmemiz gerek. Tek elemanlı demetlerde sonuna , koyuyoruz.
+         #burda sorgumuz bir değer dönecek.Eğer usernamemiz varsa bir değer dönecek. Eğer kullanıcı yoksa 0 dönecek. 
+        if result > 0: #result 0 dan büyük olduğunda böyle bir kullanıcı var demektir. burada girilen parola ile kullanıcının parolasını sorgulamamız gerekiyor.
+            # yukarda app.config yaparken dictcursor yaparak yani sözlük yaptık o yüzden sözlükten alıcaz. 
+            data = cursor.fetchone() # burada kullanıcının bütün bilgilerini almış oluyoruz.fetchone fonksiyonu bütün bilgileri al demek. 
+            real_password = data["password"] # bilgileri aldıktan sonra bunların üzerinde sözlüklerde olduğu gibi gezebiliyoruz.Burada da veritabanında ki passwordumuzu alıyoruz. 
+            if sha256_crypt.verify(password_entered,real_password): # sha256 modülünün içindeki verify fonksiyonu ile girdiğimiz password ile veritabanında ki passwordu karşılaştırıyoruz.
+                flash("Başarıyla giriş yaptınız.","success") #eğer doğruysa bu bloğa giriyor, alertimizi success yapıyoruz ve redirect yaparak verdiğimiz url ye gönderiyoruz.
+
+                session["logged_in"] = True 
+                session["username"] = username 
+
+                #login işlemimizde başarıyla giriş yaptıktan sonra indexe gitmeden sessionu başlatmamız gerekiyor.
+                return redirect(url_for("index"))
+            else: # eğer passwordumuz yanlışsa bu bloğa giricek ve tekrar redirect yaparak verdiğimiz url yi dönücek. 
+                flash("Parola yanlış.","danger")
+                return redirect(url_for("login"))
+        else:
+            #burada resultumuz 0 demektir.Yani böyle bir username yok demek. Böyle yerlerde de bir flash mesajı patlatmamız gerek.
+            flash("Böyle bir kullanıcı bulunamadı.","danger")
+            return redirect(url_for("login"))
+
+    return render_template("login.html", form = form)
+
+
+
+#logout işlemi 
+@app.route("/logout")
+def logout():
+    session.clear() # sessionu temizliyoruz ve çıkış yapıyor.
+    return redirect(url_for("index"))
+
 @app.route("/article/<string:id>") # burada herhangi bir id yazıldığında bu id yi bunun altına yazılan fonksiyondan almak istiyoruz. id'nin string olduğunu ve bunun da id değişkeninde tutulduğuınu söylüyoruz.
 def detail(id): #böylece bunu yazarak id yazdığımızda veritabanına gidip o id deki veriyi çekicek
     return "Article id: " + id
