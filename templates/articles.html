@@ -1,0 +1,19 @@
+{% extends 'layout.html' %}
+{% block body %}
+<h3>Makaleler</h3>
+<hr>
+{% if articles %} <!--bize bir articles geldiyse burası true olucak ve bu bloğa giricek-->
+
+<ul class="list-group">
+    {% for article in articles %}
+    <li class="list-group-item">{{ article.title }}</li>
+        
+    {% endfor %}
+  </ul>
+
+
+{% else  %} <!---->
+<div class="alert alert-danger"> Bu Blog'da henüz bir makale bulunmuyor.</div>
+{% endif %}
+
+{% endblock body %}

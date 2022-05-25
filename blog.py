@@ -54,6 +54,19 @@ def index():
 @app.route("/about")
 def about():
     return render_template("about.html")
+#makale sayfasının görüntülenmesi 
+@app.route("/articles")
+def articles():
+    cursor = mysql.connection.cursor()
+    sorgu = "Select * From articles"
+    result = cursor.execute(sorgu)
+
+    if result > 0:
+        articles = cursor.fetchall() #fetchall fonksiyonu bütün makaleleri bize liste içinde sözlük olarak dönecek.
+        return render_template("articles.html",articles=articles)
+
+    else:
+        return render_template("articles.html") #bunları article.htmle gönderdik ve for döngüsü yardımı ile bunları orada göstericez.
 
 
 
@@ -61,8 +74,16 @@ def about():
 #dashboard 
 @app.route("/dashboard") 
 @login_required
-def dashboard():
-    return render_template("dashboard.html")
+def dashboard(): #kendi makalemi almak istiyorum ve bunları yönetilebilir bir şekilde dashboardımıza atmak istiyoruz
+    cursor = mysql.connection.cursor()
+    sorgu = "Select * From articles where author = %s"
+    result = cursor.execute(sorgu,(session["username"],))
+    if result > 0: 
+        articles = cursor.fetchall()
+        return render_template("dashboard.html",articles=articles)
+
+    else: 
+        return render_template("dashboard.html")
 
 
 
@@ -148,7 +169,7 @@ def addarticle():
         content = form.content.data
         cursor = mysql.connection.cursor()
 
-        sorgu = "Insert Into article(title,author,content) Values(%s,%s,%s) " 
+        sorgu = "Insert Into articles(title,author,content) Values(%s,%s,%s) " 
         cursor.execute(sorgu,(title,session["username"],content))
         mysql.connection.commit() #veritabanında değişiklik yapacağımız için commit işlemi yapacağız.
         cursor.close()
