@@ -7,6 +7,19 @@ from flask import Flask,render_template,flash,redirect,url_for,session,logging,r
 from flask_mysqldb import MySQL #mysqle bağlanmak için dahil ettik 
 from wtforms import Form,StringField,TextAreaField,PasswordField,validators
 from passlib.hash import sha256_crypt #veritabanına şifreyi gönderirken biz görmeyeceğiz. 
+from functools import wraps 
+
+#kullanıcı giriş decarotorı 
+def login_required(f): #burada bir kontrol yapıyoruz. session işlemi başlatıldıysa urlden direk dasboarda gidebiliyoruz
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "logged_in" in session:  # burada session işlemi true dönerse git diyor.
+            return f(*args, **kwargs)
+        else:
+            flash("Bu sayfayı görüntülemek için lütfen giriş yapın","danger") #burada session değeri false dönerse hata mesajı yazdır ve login ekranına gönder diyoruz.
+            return redirect(url_for("login"))
+    return decorated_function
+    
 
 #kullanıcı kayıt formu 
 class RegisterForm(Form):
@@ -41,6 +54,17 @@ def index():
 @app.route("/about")
 def about():
     return render_template("about.html")
+
+
+
+
+#dashboard 
+@app.route("/dashboard") 
+@login_required
+def dashboard():
+    return render_template("dashboard.html")
+
+
 
 # Biz bir sayfaya ulaştığımızda get request yapmış oluyoruz. get request yaptığımızda server bunu anlıyor ve o sayfanın html içeriğini döndürüyor.
 # bide post requestimiz var. post request herhangi bir formu submit ettiğimizde oluşacak http request türü.
@@ -114,6 +138,29 @@ def logout():
 @app.route("/article/<string:id>") # burada herhangi bir id yazıldığında bu id yi bunun altına yazılan fonksiyondan almak istiyoruz. id'nin string olduğunu ve bunun da id değişkeninde tutulduğuınu söylüyoruz.
 def detail(id): #böylece bunu yazarak id yazdığımızda veritabanına gidip o id deki veriyi çekicek
     return "Article id: " + id
+
+#makale ekleme 
+@app.route("/addarticle",methods=["GET","POST"])
+def addarticle():
+    form = ArticleForm(request.form)
+    if request.method == "POST" and form.validate():
+        title = form.title.data
+        content = form.content.data
+        cursor = mysql.connection.cursor()
+
+        sorgu = "Insert Into article(title,author,content) Values(%s,%s,%s) " 
+        cursor.execute(sorgu,(title,session["username"],content))
+        mysql.connection.commit() #veritabanında değişiklik yapacağımız için commit işlemi yapacağız.
+        cursor.close()
+        flash("Makale Başarıyla Eklendi","success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("addarticle.html",form = form)
+
+# makale formu 
+class ArticleForm(Form):
+    title = StringField("Makale Başlığı",validators=[validators.length(min=5,max=100)])
+    content = TextAreaField("Makale içeriği",validators=[validators.length(min=10)])
 
 
 if __name__ == "__main__":
