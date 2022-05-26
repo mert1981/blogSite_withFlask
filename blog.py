@@ -1,6 +1,7 @@
 from ast import Pass
 import email
 from operator import methodcaller
+from MySQLdb import MySQLError
 from flask import Flask,render_template,flash,redirect,url_for,session,logging,request #web sunucumuzu ayağa kaldırmamızı sağlayacak.Render template içine templatemizi vererek templetemizi response olarak dönücez.
 #flask bir template yazıyorsak direkt olarak templates adlı bir klasöre bakıyor. o yüzden templatelerimizi oraya yazıyoruz.
 #jinja template flask tarafından kullanılan bir html templatesi. html css ve bootstrap modülümüzü kullanıyoruz.
@@ -148,6 +149,23 @@ def login():
 
     return render_template("login.html", form = form)
 
+#Detay sayfası 
+@app.route("/article/<string:id>")
+def article(id):
+    cursor = mysql.connection.cursor() # burada bağlantıyı yaptık 
+    sorgu = "Select * from articles where id = %s"  # burada veritabanından id leri almak istediğimizi söylüyoruz.
+    result = cursor.execute(sorgu,(id,)) 
+
+    if result > 0: #burada id'miz 0'dan büyükse yani böyle bir article varsa bu bloğa giriyor.
+        article = cursor.fetchone()
+        return render_template("article.html",article=article)
+
+    else:
+        return render_template("article.html")
+
+
+
+
 
 
 #logout işlemi 
@@ -177,6 +195,51 @@ def addarticle():
         return redirect(url_for("dashboard"))
 
     return render_template("addarticle.html",form = form)
+
+# Makale silme 
+app.route("/delete/<string:id>")
+@login_required
+def delete(id):
+    cursor = mysql.connection.cursor()
+
+    sorgu = "Select * from articles where author = %s and id = %s"
+
+    result = cursor.execute(sorgu,(session["username"],id))
+    
+    if result > 0:
+        sorgu2 = "Delete from articles where id = %s"
+        cursor.execute(sorgu2,(id,))
+        mysql.connection.commit()
+        return redirect(url_for("dashboard"))
+    else:
+        flash("Böyle bir makale yok veya böyle bir yetkiniz yok. ","danger")
+        return redirect(url_for("index"))
+
+#Makale güncelleme 
+@app.route("/edit/<string:id>",methods = ["GET","POST"])
+@login_required
+def update(id):
+    if request.method == "GET":
+        cursor = mysql.connection.cursor()
+        sorgu = "Select * from articles where id = %s and author = %s "
+        result =  cursor.execute(sorgu,(session["username"],id))
+        if result == 0: 
+            flash("Böyle bir makale yok veya bu işleme yetkiniz yok.","danger")
+            return redirect(url_for("index"))
+        else: 
+            article = cursor.fetchone()
+            form = ArticleForm()
+
+            form.title.data = article["title"]
+            form.content.data = article["content"]
+            return render_template("update.html",form = form)
+
+
+    else:
+        pass 
+
+
+
 
 # makale formu 
 class ArticleForm(Form):
