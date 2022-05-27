@@ -3,6 +3,11 @@
 <h3>Makaleler</h3>
 <hr>
 {% if articles %} <!--bize bir articles geldiyse burası true olucak ve bu bloğa giricek-->
+<form action="/search" method="post">
+  <input type="text" class=" input-sm" name ="keyword" maxlength="64" placeholder="Ara">
+  <button type="submit" class="btn btn-primary btn-sm">Ara</button>
+</form>
+<hr>
 
 <ul class="list-group">
     {% for article in articles %}

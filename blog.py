@@ -1,4 +1,4 @@
-from ast import Pass
+from ast import Pass, keyword
 import email
 from operator import methodcaller
 from MySQLdb import MySQLError
@@ -194,10 +194,10 @@ def addarticle():
         flash("Makale Başarıyla Eklendi","success")
         return redirect(url_for("dashboard"))
 
-    return render_template("addarticle.html",form = form)
+    return render_template("addarticle.html",form = form) 
 
 # Makale silme 
-app.route("/delete/<string:id>")
+@app.route("/delete/<string:id>")
 @login_required
 def delete(id):
     cursor = mysql.connection.cursor()
@@ -215,28 +215,49 @@ def delete(id):
         flash("Böyle bir makale yok veya böyle bir yetkiniz yok. ","danger")
         return redirect(url_for("index"))
 
-#Makale güncelleme 
+#Makale Güncelleme
 @app.route("/edit/<string:id>",methods = ["GET","POST"])
 @login_required
 def update(id):
-    if request.method == "GET":
-        cursor = mysql.connection.cursor()
-        sorgu = "Select * from articles where id = %s and author = %s "
-        result =  cursor.execute(sorgu,(session["username"],id))
-        if result == 0: 
-            flash("Böyle bir makale yok veya bu işleme yetkiniz yok.","danger")
-            return redirect(url_for("index"))
-        else: 
-            article = cursor.fetchone()
-            form = ArticleForm()
+   if request.method == "GET":
+       cursor = mysql.connection.cursor()
 
-            form.title.data = article["title"]
-            form.content.data = article["content"]
-            return render_template("update.html",form = form)
+       sorgu = "Select * from articles where id = %s and author = %s"
+       result = cursor.execute(sorgu,(id,session["username"]))
 
+       if result == 0:
+           flash("Böyle bir makale yok veya bu işleme yetkiniz yok","danger")
+           return redirect(url_for("index"))
+       else:
+           article = cursor.fetchone()
+           form = ArticleForm()
 
-    else:
-        pass 
+           form.title.data = article["title"]
+           form.content.data = article["content"]
+           return render_template("update.html",form = form)
+
+   else:
+       # POST REQUEST
+       form = ArticleForm(request.form)
+
+       newTitle = form.title.data
+       newContent = form.content.data
+
+       sorgu2 = "Update articles Set title = %s,content = %s where id = %s "
+
+       cursor = mysql.connection.cursor()
+
+       cursor.execute(sorgu2,(newTitle,newContent,id))
+
+       mysql.connection.commit()
+
+       flash("Makale başarıyla güncellendi","success")
+
+       return redirect(url_for("dashboard"))
+
+       pass
+        
+        
 
 
 
@@ -245,6 +266,28 @@ def update(id):
 class ArticleForm(Form):
     title = StringField("Makale Başlığı",validators=[validators.length(min=5,max=100)])
     content = TextAreaField("Makale içeriği",validators=[validators.length(min=10)])
+
+# Arama URL
+@app.route("/search",methods = ["GET","POST"])
+def search():
+   if request.method == "GET":
+       return redirect(url_for("index"))
+   else:
+       keyword = request.form.get("keyword")
+
+       cursor = mysql.connection.cursor()
+
+       sorgu = "Select * from articles where title like '%" + keyword +"%'"
+
+       result = cursor.execute(sorgu)
+
+       if result == 0:
+           flash("Aranan kelimeye uygun makale bulunamadı...","warning")
+           return redirect(url_for("articles"))
+       else:
+           articles = cursor.fetchall()
+
+           return render_template("articles.html",articles = articles)
 
 
 if __name__ == "__main__":
